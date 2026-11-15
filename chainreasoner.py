@@ -1,18 +1,18 @@
-# ChainReasoner - Multi-hop chain reasoning over stored facts
+# ChainReasoner - Multi-hop path analysis over stored facts
 # Part of the Kapildhinwa2010-dev Toolkit.
 
-"""KnowledgeNet - facts, alias derivation and chain reasoning.
+"""ChainReasoner - multi-hop path analysis over stored facts.
 
-Lineage: reserv.dean-part-2 (HELIX). Facts are stored as (subject, predicate,
-object) triples; aliases are derived transitively from equality facts; chain
-reasoning walks predicates to answer multi-hop queries.
+Lineage: reserv.dean-part-2 (HELIX). On top of the shared triple store
+this repo focuses on PATHS: all branch paths (chain_all), full
+reachability (reachable), and BFS shortest-path hop counts
+(shortest_path). Storage, rules and alias derivation live in the
+sibling repos.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
-
-import numpy as np
 
 __all__ = ["Fact", "KnowledgeNet"]
 
@@ -44,7 +44,7 @@ class Fact:
 
 
 class KnowledgeNet:
-    """Zero-overhead fact base with alias and chain reasoning."""
+    """Fact store with indexed direct and reverse queries."""
 
     def __init__(self) -> None:
         self._facts: set = set()
@@ -80,9 +80,16 @@ class KnowledgeNet:
 
     def derive_aliases(self) -> dict:
         """Transitive closure of ``same_as`` equality facts."""
+        return self.derive_aliases_from(["same_as"])
+
+    def derive_aliases_from(self, predicates) -> dict:
+        """Transitive closure over ANY of the given equality predicates."""
+        preds = set(predicates)
+        if not preds:
+            raise ValueError("predicates must be non-empty")
         adjacency: dict = defaultdict(set)
         for fact in self._facts:
-            if fact.predicate == "same_as":
+            if fact.predicate in preds:
                 adjacency[fact.subject].add(fact.object)
                 adjacency[fact.object].add(fact.subject)
         aliases: dict = {}
@@ -131,3 +138,63 @@ class KnowledgeNet:
                 scores[fact] = len(related)
         ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0].as_tuple()))
         return [fact for fact, _ in ranked[:top_k]]
+
+    def chain_all(self, start: str, predicate: str, max_hops: int = 4) -> list:
+        """Every acyclic node sequence following ``predicate``, up to max_hops.
+
+        Unlike chain() (which follows only the first match per hop), this
+        enumerates all branches. Returns a list of paths (each a list of
+        node names starting with ``start``).
+        """
+        if max_hops < 1:
+            raise ValueError("max_hops must be >= 1")
+        paths: list = []
+
+        def walk(node: str, path: list) -> None:
+            if len(path) - 1 >= max_hops:
+                return
+            for f in self._by_subject.get(node, []):
+                if f.predicate == predicate and f.object not in path:
+                    paths.append(path + [f.object])
+                    walk(f.object, path + [f.object])
+
+        walk(start, [start])
+        return paths
+
+    def reachable(self, start: str, predicate: str, max_hops: int = 8) -> list:
+        """Every node reachable from ``start`` via ``predicate`` (BFS)."""
+        if max_hops < 1:
+            raise ValueError("max_hops must be >= 1")
+        seen: set = set()
+        frontier = [start]
+        for _ in range(max_hops):
+            nxt = []
+            for node in frontier:
+                for f in self._by_subject.get(node, []):
+                    if f.predicate == predicate and f.object not in seen:
+                        seen.add(f.object)
+                        nxt.append(f.object)
+            if not nxt:
+                break
+            frontier = nxt
+        return sorted(seen)
+
+    def shortest_path(self, start: str, end: str, predicate: str, max_hops: int = 8) -> int:
+        """Fewest hops from ``start`` to ``end`` via ``predicate``; -1 if unreachable."""
+        if max_hops < 1:
+            raise ValueError("max_hops must be >= 1")
+        from collections import deque
+
+        dist = {start: 0}
+        queue = deque([start])
+        while queue:
+            node = queue.popleft()
+            if node == end:
+                return dist[node]
+            if dist[node] >= max_hops:
+                continue
+            for f in self._by_subject.get(node, []):
+                if f.predicate == predicate and f.object not in dist:
+                    dist[f.object] = dist[node] + 1
+                    queue.append(f.object)
+        return -1
