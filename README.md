@@ -1,7 +1,8 @@
 # ChainReasoner
 
 [![CI](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/ci.yml/badge.svg)](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/ci.yml)
-[![CI](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/codeql.yml/badge.svg)](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/codeql.yml)
+[![CodeQL](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/codeql.yml/badge.svg)](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/codeql.yml)
+
 
 Multi-hop path analysis over stored facts: branch paths, reachability, shortest path.
 
