@@ -1,43 +1,53 @@
 # ChainReasoner
 
-Facts, alias derivation and chain reasoning.
+[![CI](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/ci.yml/badge.svg)](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/ci.yml)
+[![CI](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/codeql.yml/badge.svg)](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/codeql.yml)
+
+Multi-hop path analysis over stored facts: branch paths, reachability, shortest path.
 
 **Part of the [Kapildhinwa2010-dev Toolkit](https://github.com/kapildhinwa2010-dev/Kapildhinwa2010-dev).**
 
-![CI](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/ci.yml/badge.svg)
-![CodeQL](https://github.com/kapildhinwa2010-dev/ChainReasoner/actions/workflows/codeql.yml/badge.svg)
-![Python](https://img.shields.io/badge/python-3.9%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+## What it does
 
-## ✨ Features
+ChainReasoner is the PATHS layer of the fact-tool family. On top of
+the shared triple store it enumerates all branch paths (chain_all),
+computes full reachability (reachable) and BFS shortest-path hop
+counts (shortest_path). Storage extras live in FactBase; rules in
+RuleEngine; alias derivation in AliasDeriver.
 
-- (subject, predicate, object) fact triples with dedup
-- Transitive `same_as` alias closure
-- Multi-hop chain walks and interference ranking
-
-## 📦 Install
+## Install
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 🚀 Quick start
+## Quick start
 
 ```python
 from chainreasoner import KnowledgeNet
 
 net = KnowledgeNet()
-net.add('a', 'next', 'b')
-net.add('b', 'next', 'c')
-print(net.chain('a', 'next'))  # ['b', 'c']
+net.add("a", "next", "b")
+net.add("b", "next", "c")
+print(net.shortest_path("a", "c", "next"))  # 2
+print(net.reachable("a", "next"))           # ["b", "c"]
 ```
 
-## 🧪 Tests
+## API
 
-```bash
-pytest tests/ -v
-```
+- add / query / facts / chain / interference - shared triple store
+- chain_all(start, predicate, max_hops) - every acyclic path
+- reachable(start, predicate, max_hops) - BFS-reachable nodes
+- shortest_path(start, end, predicate) - hop count, -1 if unreachable
 
-## 📄 License
+## Honest results and limitations
 
-MIT — see [LICENSE](LICENSE).
+- chain_all() is exponential in branching; max_hops is the only guard,
+  keep it small on dense graphs.
+- shortest_path() counts hops via BFS but does not return the path
+  itself.
+- No weights or costs - all edges are equal.
+
+## License
+
+MIT - see [LICENSE](LICENSE).
